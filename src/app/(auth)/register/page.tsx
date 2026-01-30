@@ -2,15 +2,26 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
+import { useDispatch } from 'react-redux';
+import { setIsDemo } from '@/store/slices/authSlice';
+import { useMutation } from '@apollo/client/react';
+import { REGISTER } from '@/graphql/mutations/auth';
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import { TwoFactorSetup } from '@/components/auth/TwoFactorSetup';
+
+type RegisterStep = 'register' | '2fa-setup';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const dispatch = useDispatch();
+  const [step, setStep] = useState<RegisterStep>('register');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [authToken, setAuthToken] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,10 +29,14 @@ export default function RegisterPage() {
     confirmPassword: '',
   });
 
+  const [registerMutation, { loading: registering }] = useMutation(REGISTER);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+
+    //Todo: Complex password validation can be added here later such as at least one special character, number, uppercase letter, and captial letter etc.
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -36,29 +51,87 @@ export default function RegisterPage() {
     }
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data } = await registerMutation({
+        variables: {
           name: formData.name,
           email: formData.email,
           password: formData.password,
-        }),
+        },
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Registration failed');
-      }
+      if (data?.register?.token) {
+        setAuthToken(data.register.token);
 
-      router.push('/login?registered=true');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+        // Create NextAuth session immediately so 2FA setup mutations work
+        const result = await signIn('credentials', {
+          token: data.register.token,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          setError('Authentication failed');
+          setIsLoading(false);
+          return;
+        }
+
+        // Now show 2FA setup with authenticated session
+        if (data.register.requiresSetup) {
+          setStep('2fa-setup');
+        } else {
+          // Unlikely case - no 2FA required, go to dashboard
+          dispatch(setIsDemo(false));
+          router.push('/dashboard');
+        }
+      } else {
+        setError('Registration failed');
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during registration');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleSignIn = async (token: string) => {
+    try {
+      setIsLoading(true);
+      const result = await signIn('credentials', {
+        token,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError('Authentication failed');
+      } else {
+        dispatch(setIsDemo(false));
+        router.push('/dashboard');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handle2FASetupComplete = async () => {
+    // Already signed in, just redirect to dashboard
+    dispatch(setIsDemo(false));
+    router.push('/dashboard');
+  };
+
+  // Show 2FA setup if registration is complete
+  if (step === '2fa-setup') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+        <TwoFactorSetup
+          onComplete={handle2FASetupComplete}
+          required={true}
+        />
+      </div>
+    );
+  }
+
+  // Default registration form
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md" padding="lg">
@@ -139,7 +212,7 @@ export default function RegisterPage() {
             </span>
           </div>
 
-          <Button type="submit" variant="primary" className="w-full" isLoading={isLoading}>
+          <Button type="submit" variant="primary" className="w-full" isLoading={isLoading || registering}>
             Create account
           </Button>
         </form>

@@ -17,7 +17,7 @@ test.describe('Transactions', () => {
 
     test('should display transaction items', async ({ page }) => {
       // Wait for transactions to load
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('domcontentloaded');
 
       // Check for transaction content (amounts with dollar signs)
       const transactionAmounts = page.locator('text=/\\$[\\d,]+\\.\\d{2}/');
@@ -50,7 +50,7 @@ test.describe('Transactions', () => {
 
     test('should filter by transaction type', async ({ page }) => {
       // Wait for transactions to load
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('domcontentloaded');
 
       // Find the type filter dropdown
       const typeFilter = page.getByRole('combobox').filter({ hasText: /type/i })
@@ -65,7 +65,7 @@ test.describe('Transactions', () => {
           await page.getByRole('option', { name: /expense/i }).click().catch(() => {});
         });
 
-        await page.waitForTimeout(1000);
+        await page.waitForLoadState('domcontentloaded');
 
         // Verify the filter was applied (transaction list should update)
         const updatedText = await page.getByText(/showing.*transactions/i).textContent().catch(() => '');
@@ -76,7 +76,7 @@ test.describe('Transactions', () => {
 
     test('should filter by category', async ({ page }) => {
       // Wait for transactions to load
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('domcontentloaded');
 
       // Find the category filter dropdown (usually the second combobox)
       const categoryFilter = page.getByRole('combobox').filter({ hasText: /categor/i })
@@ -89,7 +89,7 @@ test.describe('Transactions', () => {
           await page.getByRole('option', { name: /food/i }).first().click().catch(() => {});
         });
 
-        await page.waitForTimeout(1000);
+        await page.waitForLoadState('domcontentloaded');
 
         // Verify transactions are displayed (filtered results may be empty or populated)
         const transactionTable = page.getByRole('table')
@@ -101,7 +101,7 @@ test.describe('Transactions', () => {
 
     test('should search transactions', async ({ page }) => {
       // Wait for page to load
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('domcontentloaded');
 
       // Get the search box in main content area
       const searchBox = page.getByRole('main').getByPlaceholder(/search/i);
@@ -109,7 +109,7 @@ test.describe('Transactions', () => {
       if (await searchBox.isVisible().catch(() => false)) {
         // Type a common search term
         await searchBox.fill('Starbucks');
-        await page.waitForTimeout(1000);
+        await page.waitForLoadState('domcontentloaded');
 
         // Verify search results appear (may or may not find matches)
         const resultsText = await page.getByText(/showing.*transactions/i).textContent().catch(() => '');
@@ -117,13 +117,13 @@ test.describe('Transactions', () => {
 
         // Clear search
         await searchBox.clear();
-        await page.waitForTimeout(500);
+        await page.waitForLoadState('domcontentloaded');
       }
     });
 
     test('should combine multiple filters', async ({ page }) => {
       // Wait for transactions to load
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('domcontentloaded');
 
       const typeFilter = page.getByRole('combobox').first();
       const categoryFilter = page.getByRole('combobox').nth(1);
@@ -135,11 +135,11 @@ test.describe('Transactions', () => {
       if (hasFilters) {
         // Apply type filter
         await typeFilter.selectOption({ index: 1 }).catch(() => {});
-        await page.waitForTimeout(500);
+        await page.waitForLoadState('domcontentloaded');
 
         // Apply category filter
         await categoryFilter.selectOption({ index: 1 }).catch(() => {});
-        await page.waitForTimeout(1000);
+        await page.waitForLoadState('domcontentloaded');
 
         // Verify both filters are active
         const transactionList = page.getByRole('table')
@@ -151,18 +151,18 @@ test.describe('Transactions', () => {
 
     test('should reset filters', async ({ page }) => {
       // Wait for transactions to load
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('domcontentloaded');
 
       const typeFilter = page.getByRole('combobox').first();
 
       if (await typeFilter.isVisible().catch(() => false)) {
         // Apply a filter
         await typeFilter.selectOption({ index: 1 }).catch(() => {});
-        await page.waitForTimeout(500);
+        await page.waitForLoadState('domcontentloaded');
 
         // Reset to "All Types" or first option
         await typeFilter.selectOption({ index: 0 }).catch(() => {});
-        await page.waitForTimeout(1000);
+        await page.waitForLoadState('domcontentloaded');
 
         // Verify transactions are displayed
         const showingText = await page.getByText(/showing.*transactions/i).textContent().catch(() => '');
@@ -257,7 +257,7 @@ test.describe('Transactions', () => {
       if (await loadMoreButton.isVisible().catch(() => false)) {
         const initialCount = await page.locator('[class*="transaction"]').count();
         await loadMoreButton.click();
-        await page.waitForTimeout(1000);
+        await page.waitForLoadState('domcontentloaded');
         // Count should increase or stay same if no more
       }
     });
@@ -281,7 +281,7 @@ test.describe('Transactions', () => {
 
     test('should display transaction category', async ({ page }) => {
       // Wait for transactions to load
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('domcontentloaded');
 
       // Check for the Category column header
       const categoryHeader = await page.getByRole('columnheader', { name: /category/i }).isVisible().catch(() => false);
@@ -321,7 +321,7 @@ test.describe('Transactions', () => {
       if (await searchInput.isVisible().catch(() => false)) {
         // Search for something unlikely to exist
         await searchInput.fill('xyznonexistent123');
-        await page.waitForTimeout(1000);
+        await page.waitForLoadState('domcontentloaded');
 
         // Should show empty state or no results message
         const emptyState = page.getByText(/no.*found|no.*transactions|no results/i);

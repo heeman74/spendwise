@@ -17,7 +17,7 @@ test.describe('Accounts', () => {
 
     test('should display account cards', async ({ page }) => {
       // Should show account information
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('domcontentloaded');
 
       const accountCard = page.locator('[data-testid="account-card"], [class*="account"]').first();
 

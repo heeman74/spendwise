@@ -4,3 +4,4 @@ export * from './analytics';
 export * from './savingsGoals';
 export * from './advice';
 export * from './user';
+export * from './twoFactor';

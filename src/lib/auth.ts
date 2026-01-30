@@ -11,8 +11,38 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        token: { label: 'Token', type: 'text' },
       },
       async authorize(credentials) {
+        // Check if pre-authenticated token provided (from registration/2FA flow)
+        if (credentials?.token) {
+          try {
+            const decoded = jwt.verify(credentials.token, process.env.NEXTAUTH_SECRET!) as {
+              id: string;
+              email: string;
+              name?: string;
+            };
+
+            const user = await prisma.user.findUnique({
+              where: { id: decoded.id },
+            });
+
+            if (!user) {
+              throw new Error('User not found');
+            }
+
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              image: user.image,
+            };
+          } catch (error) {
+            throw new Error('Invalid token');
+          }
+        }
+
+        // Otherwise handle email/password flow
         if (!credentials?.email || !credentials?.password) {
           throw new Error('Email and password required');
         }

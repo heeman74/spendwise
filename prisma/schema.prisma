@@ -13,11 +13,22 @@ model User {
   name          String?
   password      String?
   image         String?
-  accounts      Account[]
-  transactions  Transaction[]
-  goals         SavingsGoal[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+
+  // Two-Factor Authentication fields
+  phoneNumber             String?       // Encrypted with AES-256
+  emailVerified           Boolean       @default(false)
+  phoneVerified           Boolean       @default(false)
+  twoFactorEmailEnabled   Boolean       @default(false)
+  twoFactorSmsEnabled     Boolean       @default(false)
+  backupCodes             String?       // JSON array of hashed codes
+
+  accounts                Account[]
+  transactions            Transaction[]
+  goals                   SavingsGoal[]
+  twoFactorCodes          TwoFactorCode[]
+  twoFactorLogs           TwoFactorLog[]
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
 }
 
 model Account {
@@ -81,4 +92,59 @@ enum TransactionType {
   INCOME
   EXPENSE
   TRANSFER
+}
+
+// Two-Factor Authentication Models
+model TwoFactorCode {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code        String            // 6-digit code (hashed with bcrypt)
+  type        TwoFactorType
+  purpose     TwoFactorPurpose
+  expiresAt   DateTime
+  verified    Boolean           @default(false)
+  attempts    Int               @default(0)
+  createdAt   DateTime          @default(now())
+
+  @@index([userId, verified, expiresAt])
+  @@index([expiresAt])
+}
+
+model TwoFactorLog {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event       TwoFactorEvent
+  type        TwoFactorType?
+  success     Boolean
+  ipAddress   String?
+  userAgent   String?
+  metadata    String?           // JSON for additional context
+  createdAt   DateTime          @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+enum TwoFactorType {
+  EMAIL
+  SMS
+  BACKUP_CODE
+}
+
+enum TwoFactorPurpose {
+  LOGIN
+  SETUP
+  DISABLE
+}
+
+enum TwoFactorEvent {
+  CODE_SENT
+  CODE_VERIFIED
+  CODE_FAILED
+  SETUP_STARTED
+  SETUP_COMPLETED
+  DISABLED
+  BACKUP_CODE_USED
 }

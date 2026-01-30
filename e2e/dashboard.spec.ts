@@ -6,6 +6,17 @@ test.describe('Dashboard', () => {
     await page.goto('/login');
     await page.getByRole('button', { name: /demo|try demo/i }).click();
     await page.waitForURL(/\/dashboard/, { timeout: 10000 });
+
+    // On mobile, the sidebar opens by default and its overlay (z-30)
+    // intercepts clicks on the bottom nav (z-20). Dismiss it by
+    // dispatching a click event directly on the overlay element (the
+    // sidebar covers the overlay's center, so a normal click would hit
+    // the sidebar instead).
+    const sidebarOverlay = page.locator('div[class*="bg-black"]');
+    if (await sidebarOverlay.isVisible().catch(() => false)) {
+      await sidebarOverlay.dispatchEvent('click');
+      await sidebarOverlay.waitFor({ state: 'hidden', timeout: 1000 }).catch(() => {});
+    }
   });
 
   test.describe('Dashboard Layout', () => {
@@ -14,10 +25,21 @@ test.describe('Dashboard', () => {
     });
 
     test('should display sidebar navigation', async ({ page }) => {
-      // Check for sidebar or navigation links
-      await expect(page.getByRole('link', { name: /dashboard/i })).toBeVisible();
-      await expect(page.getByRole('link', { name: /transactions/i })).toBeVisible();
-      await expect(page.getByRole('link', { name: /accounts/i })).toBeVisible();
+      // On mobile, the sidebar is hidden and a bottom nav bar is used instead.
+      // The bottom nav uses "Home" instead of "Dashboard", and both nav elements
+      // exist in the DOM, so we must disambiguate to avoid strict-mode violations.
+      const isMobile = (page.viewportSize()?.width ?? 1280) < 1024;
+
+      if (isMobile) {
+        const bottomNav = page.getByRole('navigation').last();
+        await expect(bottomNav.getByRole('link', { name: /home/i })).toBeVisible();
+        await expect(bottomNav.getByRole('link', { name: /transactions/i })).toBeVisible();
+        await expect(bottomNav.getByRole('link', { name: /accounts/i })).toBeVisible();
+      } else {
+        await expect(page.getByRole('link', { name: /dashboard/i })).toBeVisible();
+        await expect(page.getByRole('link', { name: /transactions/i })).toBeVisible();
+        await expect(page.getByRole('link', { name: /accounts/i })).toBeVisible();
+      }
     });
 
     test('should display header with user info', async ({ page }) => {
@@ -119,12 +141,16 @@ test.describe('Dashboard', () => {
 
   test.describe('Navigation from Dashboard', () => {
     test('should navigate to transactions page', async ({ page }) => {
-      await page.getByRole('link', { name: /transactions/i }).click();
+      // On mobile, both sidebar and bottom nav contain matching links.
+      // Scope to the last navigation element (bottom nav on mobile, sidebar on desktop).
+      const nav = page.getByRole('navigation').last();
+      await nav.getByRole('link', { name: /transactions/i }).click();
       await expect(page).toHaveURL(/\/transactions/);
     });
 
     test('should navigate to accounts page', async ({ page }) => {
-      await page.getByRole('link', { name: /accounts/i }).click();
+      const nav = page.getByRole('navigation').last();
+      await nav.getByRole('link', { name: /accounts/i }).click();
       await expect(page).toHaveURL(/\/accounts/);
     });
   });

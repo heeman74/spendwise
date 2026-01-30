@@ -9,16 +9,24 @@ import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import { useLoginStep1, TwoFactorType } from '@/hooks/useTwoFactor';
+import { TwoFactorVerify } from '@/components/auth/TwoFactorVerify';
+
+type LoginStep = 'credentials' | '2fa';
 
 export default function LoginPage() {
   const router = useRouter();
+  const [step, setStep] = useState<LoginStep>('credentials');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+  const [pendingToken, setPendingToken] = useState('');
+  const [availableMethods, setAvailableMethods] = useState<TwoFactorType[]>([]);
   const dispatch = useDispatch();
+  const { loginStep1, loading: step1Loading } = useLoginStep1();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,23 +34,66 @@ export default function LoginPage() {
     setError('');
 
     try {
+      // Step 1: Validate credentials and check if 2FA is required
+      const { data } = await loginStep1(formData.email, formData.password);
+
+      if (data?.loginStep1?.requiresTwoFactor) {
+        // User has 2FA enabled - proceed to 2FA verification
+        setPendingToken(data.loginStep1.pendingToken || '');
+        setAvailableMethods(data.loginStep1.availableMethods || []);
+        setStep('2fa');
+      } else {
+        // No 2FA required - sign in directly with NextAuth
+        // This case is rare since 2FA is mandatory for new users
+        const result = await signIn('credentials', {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          setError('Authentication failed');
+        } else {
+          dispatch(setIsDemo(false));
+          router.push('/dashboard');
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Invalid email or password');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handle2FAVerify = async (token: string, user: any) => {
+    try {
+      setIsLoading(true);
+      setError('');
+
+      // Sign in to NextAuth with the full access token
       const result = await signIn('credentials', {
-        email: formData.email,
-        password: formData.password,
+        token,
         redirect: false,
       });
-    
+
       if (result?.error) {
-        setError('Invalid email or password');
+        setError('Authentication failed');
       } else {
         dispatch(setIsDemo(false));
         router.push('/dashboard');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCancel2FA = () => {
+    setStep('credentials');
+    setPendingToken('');
+    setAvailableMethods([]);
+    setError('');
   };
 
   // Demo login handler
@@ -53,6 +104,26 @@ export default function LoginPage() {
     router.push('/dashboard');
   };
 
+  // Show 2FA verification if on step 2
+  if (step === '2fa') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm max-w-md mx-auto">
+            {error}
+          </div>
+        )}
+        <TwoFactorVerify
+          pendingToken={pendingToken}
+          availableMethods={availableMethods}
+          onVerify={handle2FAVerify}
+          onCancel={handleCancel2FA}
+        />
+      </div>
+    );
+  }
+
+  // Default credentials form
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md" padding="lg">
@@ -112,7 +183,7 @@ export default function LoginPage() {
             </a>
           </div>
 
-          <Button type="submit" variant="primary" className="w-full" isLoading={isLoading}>
+          <Button type="submit" variant="primary" className="w-full" isLoading={isLoading || step1Loading}>
             Sign in
           </Button>
         </form>

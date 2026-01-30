@@ -19,11 +19,10 @@ test.describe('Authentication Flow', () => {
       await page.getByRole('button', { name: /sign in/i }).click();
 
       // Form should still be visible (not submitted) or show validation error
-      // HTML5 validation may prevent submission without showing custom error text
-      const formStillVisible = await page.getByRole('button', { name: /sign in/i }).isVisible();
-      const hasValidationError = await page.getByText(/email.*required|invalid|please/i).first().isVisible().catch(() => false);
-
-      expect(formStillVisible || hasValidationError).toBe(true);
+      await expect(
+        page.getByRole('button', { name: /sign in/i })
+          .or(page.getByText(/email.*required|invalid|please/i))
+      ).toBeVisible();
     });
 
     test('should show error for invalid credentials', async ({ page }) => {
@@ -35,11 +34,10 @@ test.describe('Authentication Flow', () => {
       await page.getByRole('button', { name: /sign in/i }).click();
 
       // Should show error message or remain on login page (not redirect to dashboard)
-      await page.waitForTimeout(2000);
-      const hasError = await page.getByText(/invalid|incorrect|failed|error|wrong/i).isVisible().catch(() => false);
-      const stillOnLogin = await page.getByRole('button', { name: /sign in/i }).isVisible();
-
-      expect(hasError || stillOnLogin).toBe(true);
+      await expect(
+        page.getByText(/invalid|incorrect|failed|error|wrong/i)
+          .or(page.getByRole('button', { name: /sign in/i }))
+      ).toBeVisible();
     });
 
     test('should have link to registration page', async ({ page }) => {
@@ -103,10 +101,10 @@ test.describe('Authentication Flow', () => {
       await page.getByRole('button', { name: /sign up|create.*account|register/i }).click();
 
       // Form should still be visible (not submitted) or show validation error
-      const formStillVisible = await page.getByRole('button', { name: /sign up|create.*account|register/i }).isVisible();
-      const hasValidationError = await page.getByText(/required|invalid|please/i).first().isVisible().catch(() => false);
-
-      expect(formStillVisible || hasValidationError).toBe(true);
+      await expect(
+        page.getByRole('button', { name: /sign up|create.*account|register/i })
+          .or(page.getByText(/required|invalid|please/i))
+      ).toBeVisible();
     });
 
     test('should validate email format', async ({ page }) => {
@@ -116,10 +114,10 @@ test.describe('Authentication Flow', () => {
       await page.getByRole('button', { name: /sign up|create.*account|register/i }).click();
 
       // Form should still be visible or show email validation error
-      const formStillVisible = await page.getByRole('button', { name: /sign up|create.*account|register/i }).isVisible();
-      const hasValidationError = await page.getByText(/invalid.*email|valid email/i).isVisible().catch(() => false);
-
-      expect(formStillVisible || hasValidationError).toBe(true);
+      await expect(
+        page.getByRole('button', { name: /sign up|create.*account|register/i })
+          .or(page.getByText(/invalid.*email|valid email/i))
+      ).toBeVisible();
     });
 
     test('should have link to login page', async ({ page }) => {
@@ -134,35 +132,30 @@ test.describe('Authentication Flow', () => {
     // Note: App may use demo mode or redirect to login - behavior varies
     test('should handle dashboard access', async ({ page }) => {
       await page.goto('/dashboard');
-      await page.waitForTimeout(2000);
 
-      // Either loads dashboard or redirects to login
-      const hasDashboard = await page.getByRole('heading', { name: /dashboard|overview/i }).isVisible().catch(() => false);
-      const hasLogin = await page.getByRole('button', { name: /sign in/i }).isVisible().catch(() => false);
-
-      expect(hasDashboard || hasLogin).toBe(true);
+      // Either loads dashboard or redirects to login — auto-retries until one appears
+      await expect(
+        page.getByRole('heading', { name: /dashboard|overview/i })
+          .or(page.getByRole('button', { name: /sign in/i }))
+      ).toBeVisible();
     });
 
     test('should handle transactions access', async ({ page }) => {
       await page.goto('/transactions');
-      await page.waitForTimeout(2000);
 
-      // Either loads transactions or redirects to login
-      const hasTransactions = await page.getByRole('heading', { name: /transactions/i }).isVisible().catch(() => false);
-      const hasLogin = await page.getByRole('button', { name: /sign in/i }).isVisible().catch(() => false);
-
-      expect(hasTransactions || hasLogin).toBe(true);
+      await expect(
+        page.getByRole('heading', { name: /transactions/i })
+          .or(page.getByRole('button', { name: /sign in/i }))
+      ).toBeVisible();
     });
 
     test('should handle accounts access', async ({ page }) => {
       await page.goto('/accounts');
-      await page.waitForTimeout(2000);
 
-      // Either loads accounts or redirects to login
-      const hasAccounts = await page.getByRole('heading', { name: 'Accounts', level: 1 }).isVisible().catch(() => false);
-      const hasLogin = await page.getByRole('button', { name: /sign in/i }).isVisible().catch(() => false);
-
-      expect(hasAccounts || hasLogin).toBe(true);
+      await expect(
+        page.getByRole('heading', { name: 'Accounts', level: 1 })
+          .or(page.getByRole('button', { name: /sign in/i }))
+      ).toBeVisible();
     });
   });
 

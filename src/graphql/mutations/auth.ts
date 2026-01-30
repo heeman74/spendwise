@@ -21,6 +21,7 @@ export const REGISTER = gql`
       user {
         ...UserFields
       }
+      requiresSetup
     }
   }
 `;

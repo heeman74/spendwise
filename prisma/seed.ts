@@ -1,5 +1,6 @@
 import { PrismaClient, AccountType, TransactionType } from '@prisma/client';
 import { hash } from 'bcryptjs';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -46,6 +47,62 @@ async function main() {
   });
 
   console.log('Created user:', user.email);
+
+  // Create 2FA test user (existing-user@example.com / password123)
+  const twoFactorPassword = await hash('password123', 12);
+
+  const twoFactorUser = await prisma.user.upsert({
+    where: { email: 'existing-user@example.com' },
+    update: {},
+    create: {
+      email: 'existing-user@example.com',
+      name: '2FA Test User',
+      password: twoFactorPassword,
+      twoFactorEmailEnabled: true,
+      emailVerified: true,
+    },
+  });
+
+  // Generate backup codes for 2FA user
+  const backupCodeHashes: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const code = crypto.randomBytes(4).toString('hex').toUpperCase();
+    backupCodeHashes.push(await hash(code, 12));
+  }
+  await prisma.user.update({
+    where: { id: twoFactorUser.id },
+    data: { backupCodes: JSON.stringify(backupCodeHashes) },
+  });
+
+  console.log('Created 2FA user:', twoFactorUser.email);
+
+  // Create multi-method 2FA user (multi-method-user@example.com / password123)
+  const multiMethodUser = await prisma.user.upsert({
+    where: { email: 'multi-method-user@example.com' },
+    update: {},
+    create: {
+      email: 'multi-method-user@example.com',
+      name: 'Multi-Method 2FA User',
+      password: twoFactorPassword,
+      twoFactorEmailEnabled: true,
+      twoFactorSmsEnabled: true,
+      emailVerified: true,
+      phoneVerified: true,
+    },
+  });
+
+  // Generate backup codes for multi-method user
+  const multiBackupHashes: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const code = crypto.randomBytes(4).toString('hex').toUpperCase();
+    multiBackupHashes.push(await hash(code, 12));
+  }
+  await prisma.user.update({
+    where: { id: multiMethodUser.id },
+    data: { backupCodes: JSON.stringify(multiBackupHashes) },
+  });
+
+  console.log('Created multi-method 2FA user:', multiMethodUser.email);
 
   // Create accounts
   const accountsData = [
