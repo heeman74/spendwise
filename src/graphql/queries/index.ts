@@ -5,3 +5,4 @@ export * from './savingsGoals';
 export * from './advice';
 export * from './user';
 export * from './twoFactor';
+export * from './plaid';
