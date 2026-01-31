@@ -20,7 +20,7 @@ interface AccountTypeGroupProps {
   type: AccountType;
   accounts: Account[];
   plaidItems: PlaidItem[];
-  onConnectBank?: () => void;
+  onConnectBank?: (result?: any) => void;
   onReAuth?: (itemId: string) => void;
 }
 

@@ -1,110 +1,62 @@
 'use client';
 
 import { useState } from 'react';
-import Card, { CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import AccountList from '@/components/accounts/AccountList';
-import Modal, { ModalFooter } from '@/components/ui/Modal';
-import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
-import { mockAccounts } from '@/data/mockData';
-import { formatCurrency } from '@/lib/utils';
-import type { Account, AccountType } from '@/types';
-
-const accountTypes = [
-  { value: 'CHECKING', label: 'Checking' },
-  { value: 'SAVINGS', label: 'Savings' },
-  { value: 'CREDIT', label: 'Credit Card' },
-  { value: 'INVESTMENT', label: 'Investment' },
-];
+import Spinner from '@/components/ui/Spinner';
+import BalanceSummary from '@/components/accounts/BalanceSummary';
+import AccountTypeGroup from '@/components/accounts/AccountTypeGroup';
+import PlaidLinkButton from '@/components/plaid/PlaidLinkButton';
+import LinkSuccessModal from '@/components/plaid/LinkSuccessModal';
+import { useAccounts } from '@/hooks/useAccounts';
+import { usePlaidItems } from '@/hooks/usePlaid';
+import type { AccountType } from '@/types';
 
 export default function AccountsPage() {
-  const [accounts, setAccounts] = useState(mockAccounts);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    type: 'CHECKING' as AccountType,
-    balance: '',
-    institution: '',
-  });
+  const { accounts, loading: accountsLoading } = useAccounts();
+  const { plaidItems, loading: plaidLoading } = usePlaidItems();
+  const [showLinkSuccess, setShowLinkSuccess] = useState(false);
+  const [linkResult, setLinkResult] = useState<any>(null);
+  const [triggerPlaidLink, setTriggerPlaidLink] = useState(0);
 
-  const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-  const totalAssets = accounts
-    .filter((acc) => acc.balance > 0)
-    .reduce((sum, acc) => sum + acc.balance, 0);
-  const totalLiabilities = accounts
-    .filter((acc) => acc.balance < 0)
-    .reduce((sum, acc) => sum + Math.abs(acc.balance), 0);
+  const isLoading = accountsLoading || plaidLoading;
 
-  const handleEdit = (account: Account) => {
-    setEditingAccount(account);
-    setFormData({
-      name: account.name,
-      type: account.type,
-      balance: account.balance.toString(),
-      institution: account.institution,
-    });
-    setIsModalOpen(true);
+  // Handler for PlaidLinkButton success
+  const handlePlaidSuccess = (result: any) => {
+    setLinkResult(result);
+    setShowLinkSuccess(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this account?')) {
-      setAccounts((prev) => prev.filter((acc) => acc.id !== id));
-    }
+  // Handler for connecting another account from success modal
+  const handleConnectAnother = () => {
+    setShowLinkSuccess(false);
+    setLinkResult(null);
+    // Trigger PlaidLinkButton to open again (will be handled externally if needed)
+    setTriggerPlaidLink((prev) => prev + 1);
   };
 
-  const handleSync = (id: string) => {
-    console.log('Syncing account:', id);
-    // TODO: Implement sync
+  // Handler for done from success modal
+  const handleDone = () => {
+    setShowLinkSuccess(false);
+    setLinkResult(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (editingAccount) {
-      setAccounts((prev) =>
-        prev.map((acc) =>
-          acc.id === editingAccount.id
-            ? {
-                ...acc,
-                name: formData.name,
-                type: formData.type,
-                balance: parseFloat(formData.balance),
-                institution: formData.institution,
-                updatedAt: new Date(),
-              }
-            : acc
-        )
-      );
-    } else {
-      const newAccount: Account = {
-        id: `acc_${Date.now()}`,
-        userId: 'user_1',
-        name: formData.name,
-        type: formData.type,
-        balance: parseFloat(formData.balance),
-        institution: formData.institution,
-        lastSynced: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      setAccounts((prev) => [...prev, newAccount]);
-    }
-
-    setIsModalOpen(false);
-    setEditingAccount(null);
-    resetForm();
+  // Handler for re-authentication
+  const handleReAuth = (itemId: string) => {
+    console.log('Re-authenticate item:', itemId);
+    // TODO: Implement re-auth flow with PlaidLinkButton in update mode
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      type: 'CHECKING',
-      balance: '',
-      institution: '',
-    });
-  };
+  // If showing success modal, render it
+  if (showLinkSuccess && linkResult) {
+    return (
+      <LinkSuccessModal
+        institutionName={linkResult.plaidItem?.institutionName || 'Bank'}
+        accounts={linkResult.plaidItem?.accounts || []}
+        onDone={handleDone}
+        onConnectAnother={handleConnectAnother}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -116,147 +68,77 @@ export default function AccountsPage() {
             Manage your connected financial accounts
           </p>
         </div>
-        <Button
-          variant="primary"
-          onClick={() => {
-            setEditingAccount(null);
-            resetForm();
-            setIsModalOpen(true);
-          }}
-        >
+        <PlaidLinkButton mode="create" onSuccess={handlePlaidSuccess}>
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          Add Account
-        </Button>
+          Connect Bank
+        </PlaidLinkButton>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Net Worth</p>
-          <p className={`mt-1 text-2xl font-bold ${totalBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            {formatCurrency(totalBalance)}
-          </p>
-        </Card>
-        <Card>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Total Assets</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
-            {formatCurrency(totalAssets)}
-          </p>
-        </Card>
-        <Card>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Total Liabilities</p>
-          <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">
-            {formatCurrency(totalLiabilities)}
-          </p>
-        </Card>
-      </div>
-
-      {/* Account groups */}
-      <div className="space-y-6">
-        {/* Cash accounts */}
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Cash Accounts
-          </h2>
-          <AccountList
-            accounts={accounts.filter((a) => a.type === 'CHECKING' || a.type === 'SAVINGS')}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onSync={handleSync}
-          />
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Spinner size="lg" />
         </div>
+      ) : accounts.length === 0 ? (
+        /* Empty state when no accounts at all */
+        <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+          <div className="mx-auto w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            No accounts connected
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
+            Connect your bank accounts to get started with SpendWise. Track balances, transactions, and get personalized financial insights.
+          </p>
+          <div className="flex items-center justify-center gap-4">
+            <PlaidLinkButton mode="create" onSuccess={handlePlaidSuccess} />
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Balance Summary */}
+          <BalanceSummary accounts={accounts} />
 
-        {/* Credit accounts */}
-        {accounts.some((a) => a.type === 'CREDIT') && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Credit Cards
-            </h2>
-            <AccountList
-              accounts={accounts.filter((a) => a.type === 'CREDIT')}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onSync={handleSync}
+          {/* Account Type Groups */}
+          <div className="space-y-8">
+            <AccountTypeGroup
+              type="CHECKING"
+              accounts={accounts.filter((a: any) => a.type === 'CHECKING')}
+              plaidItems={plaidItems}
+              onConnectBank={handlePlaidSuccess}
+              onReAuth={handleReAuth}
+            />
+
+            <AccountTypeGroup
+              type="SAVINGS"
+              accounts={accounts.filter((a: any) => a.type === 'SAVINGS')}
+              plaidItems={plaidItems}
+              onConnectBank={handlePlaidSuccess}
+              onReAuth={handleReAuth}
+            />
+
+            <AccountTypeGroup
+              type="CREDIT"
+              accounts={accounts.filter((a: any) => a.type === 'CREDIT')}
+              plaidItems={plaidItems}
+              onConnectBank={handlePlaidSuccess}
+              onReAuth={handleReAuth}
+            />
+
+            <AccountTypeGroup
+              type="INVESTMENT"
+              accounts={accounts.filter((a: any) => a.type === 'INVESTMENT')}
+              plaidItems={plaidItems}
+              onConnectBank={handlePlaidSuccess}
+              onReAuth={handleReAuth}
             />
           </div>
-        )}
-
-        {/* Investment accounts */}
-        {accounts.some((a) => a.type === 'INVESTMENT') && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Investment Accounts
-            </h2>
-            <AccountList
-              accounts={accounts.filter((a) => a.type === 'INVESTMENT')}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onSync={handleSync}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Add/Edit Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingAccount(null);
-        }}
-        title={editingAccount ? 'Edit Account' : 'Add Account'}
-        size="md"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Account Name"
-            placeholder="e.g., Primary Checking"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-          />
-          <Select
-            label="Account Type"
-            options={accountTypes}
-            value={formData.type}
-            onChange={(e) => setFormData({ ...formData, type: e.target.value as AccountType })}
-          />
-          <Input
-            label="Institution"
-            placeholder="e.g., Chase Bank"
-            value={formData.institution}
-            onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
-            required
-          />
-          <Input
-            label="Current Balance"
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            value={formData.balance}
-            onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
-            helperText="For credit cards, enter a negative balance"
-            required
-          />
-          <ModalFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setIsModalOpen(false);
-                setEditingAccount(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary">
-              {editingAccount ? 'Save Changes' : 'Add Account'}
-            </Button>
-          </ModalFooter>
-        </form>
-      </Modal>
+        </>
+      )}
     </div>
   );
 }
