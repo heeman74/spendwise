@@ -22,8 +22,44 @@ export interface TwoFactorStatus {
   backupCodesRemaining: number;
 }
 
+interface SendSetupCodeData {
+  sendSetupCode: {
+    success: boolean;
+    expiresInMinutes: number;
+    codeSentTo: string | null;
+  } | null;
+}
+
+interface EnableTwoFactorData {
+  enableTwoFactor: {
+    success: boolean;
+    backupCodes: string[] | null;
+    message: string | null;
+  } | null;
+}
+
+interface LoginStep1Data {
+  loginStep1: {
+    requiresTwoFactor: boolean;
+    pendingToken: string | null;
+    availableMethods: TwoFactorType[];
+  } | null;
+}
+
+interface LoginStep2Data {
+  loginStep2: {
+    token: string;
+    user: {
+      id: string;
+      email: string;
+      name: string | null;
+      image: string | null;
+    };
+  } | null;
+}
+
 export function useTwoFactorStatus() {
-  const { data, loading, error, refetch } = useQuery(GET_TWO_FACTOR_STATUS, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_TWO_FACTOR_STATUS, {
     fetchPolicy: 'cache-and-network',
   });
 
@@ -36,7 +72,7 @@ export function useTwoFactorStatus() {
 }
 
 export function useSendSetupCode() {
-  const [sendSetupCode, { loading, error, data }] = useMutation(SEND_SETUP_CODE);
+  const [sendSetupCode, { loading, error, data }] = useMutation<SendSetupCodeData>(SEND_SETUP_CODE);
 
   return {
     sendSetupCode: (type: TwoFactorType, phoneNumber?: string) =>
@@ -48,7 +84,7 @@ export function useSendSetupCode() {
 }
 
 export function useEnableTwoFactor() {
-  const [enableTwoFactor, { loading, error, data }] = useMutation(ENABLE_TWO_FACTOR);
+  const [enableTwoFactor, { loading, error, data }] = useMutation<EnableTwoFactorData>(ENABLE_TWO_FACTOR);
 
   return {
     enableTwoFactor: (type: TwoFactorType, code: string) =>
@@ -60,7 +96,7 @@ export function useEnableTwoFactor() {
 }
 
 export function useDisableTwoFactor() {
-  const [disableTwoFactor, { loading, error, data }] = useMutation(DISABLE_TWO_FACTOR);
+  const [disableTwoFactor, { loading, error, data }] = useMutation<{ disableTwoFactor: boolean }>(DISABLE_TWO_FACTOR);
 
   return {
     disableTwoFactor: (type: TwoFactorType, code: string) =>
@@ -72,7 +108,7 @@ export function useDisableTwoFactor() {
 }
 
 export function useRegenerateBackupCodes() {
-  const [regenerateBackupCodes, { loading, error, data }] = useMutation(REGENERATE_BACKUP_CODES);
+  const [regenerateBackupCodes, { loading, error, data }] = useMutation<{ regenerateBackupCodes: string[] }>(REGENERATE_BACKUP_CODES);
 
   return {
     regenerateBackupCodes: (password: string) =>
@@ -84,7 +120,7 @@ export function useRegenerateBackupCodes() {
 }
 
 export function useLoginStep1() {
-  const [loginStep1, { loading, error, data }] = useMutation(LOGIN_STEP_1);
+  const [loginStep1, { loading, error, data }] = useMutation<LoginStep1Data>(LOGIN_STEP_1);
 
   return {
     loginStep1: (email: string, password: string) =>
@@ -96,7 +132,7 @@ export function useLoginStep1() {
 }
 
 export function useLoginStep2() {
-  const [loginStep2, { loading, error, data }] = useMutation(LOGIN_STEP_2);
+  const [loginStep2, { loading, error, data }] = useMutation<LoginStep2Data>(LOGIN_STEP_2);
 
   return {
     loginStep2: (pendingToken: string, code: string, type: TwoFactorType) =>

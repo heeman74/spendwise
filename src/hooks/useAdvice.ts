@@ -4,7 +4,7 @@ import { useQuery } from '@apollo/client/react';
 import { GET_ADVICE, GET_BUDGET_SUGGESTIONS } from '@/graphql';
 
 export function useAdvice() {
-  const { data, loading, error, refetch } = useQuery(GET_ADVICE, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_ADVICE, {
     fetchPolicy: 'cache-and-network',
   });
 
@@ -17,7 +17,7 @@ export function useAdvice() {
 }
 
 export function useBudgetSuggestions() {
-  const { data, loading, error, refetch } = useQuery(GET_BUDGET_SUGGESTIONS, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_BUDGET_SUGGESTIONS, {
     fetchPolicy: 'cache-and-network',
   });
 

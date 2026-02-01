@@ -84,7 +84,7 @@ export default function CategoryBarChart({ data, horizontal = false }: CategoryB
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} vertical={false} />
         <XAxis
           dataKey="category"
-          tick={{ fill: '#6B7280', fontSize: 11, angle: -45, textAnchor: 'end' }}
+          tick={{ fill: '#6B7280', fontSize: 11, angle: -45, textAnchor: 'end' } as any}
           axisLine={{ stroke: '#374151', opacity: 0.3 }}
           height={60}
         />

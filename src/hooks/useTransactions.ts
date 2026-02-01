@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client/react';
 import {
   GET_TRANSACTIONS,
@@ -56,28 +57,51 @@ export function useTransactions(
   pagination?: PaginationInput,
   sort?: TransactionSortInput
 ) {
-  const { data, loading, error, fetchMore, refetch } = useQuery(GET_TRANSACTIONS, {
+  const [loadingMore, setLoadingMore] = useState(false);
+  const nextPageRef = useRef(2);
+
+  const { data, loading, error, fetchMore, refetch: baseRefetch } = useQuery<any>(GET_TRANSACTIONS, {
     variables: { filters, pagination, sort },
     fetchPolicy: 'cache-and-network',
+    notifyOnNetworkStatusChange: true,
   });
 
-  const loadMore = () => {
-    if (data?.transactions.pageInfo.hasNextPage) {
-      return fetchMore({
+  // Reset page counter when filters/sort change (which triggers a fresh page-1 fetch)
+  const filterKey = JSON.stringify(filters) + JSON.stringify(sort);
+  useEffect(() => {
+    nextPageRef.current = 2;
+  }, [filterKey]);
+
+  const pageInfo = data?.transactions?.pageInfo;
+
+  const loadMore = useCallback(async () => {
+    if (!pageInfo?.hasNextPage || loadingMore || loading) return;
+    setLoadingMore(true);
+    try {
+      await fetchMore({
         variables: {
           pagination: {
-            page: (pagination?.page ?? 1) + 1,
-            limit: pagination?.limit ?? 20,
+            page: nextPageRef.current,
+            limit: pagination?.limit ?? 50,
           },
         },
       });
+      nextPageRef.current++;
+    } finally {
+      setLoadingMore(false);
     }
-  };
+  }, [fetchMore, pageInfo?.hasNextPage, loadingMore, loading, pagination?.limit]);
+
+  const refetch = useCallback(async () => {
+    nextPageRef.current = 2;
+    return baseRefetch();
+  }, [baseRefetch]);
 
   return {
-    transactions: data?.transactions.edges.map((e: { node: unknown }) => e.node) ?? [],
-    pageInfo: data?.transactions.pageInfo,
-    loading,
+    transactions: data?.transactions?.edges?.map((e: { node: unknown }) => e.node) ?? [],
+    pageInfo,
+    loading: loading && !loadingMore,
+    loadingMore,
     error,
     loadMore,
     refetch,
@@ -85,7 +109,7 @@ export function useTransactions(
 }
 
 export function useRecentTransactions(limit = 5) {
-  const { data, loading, error, refetch } = useQuery(GET_RECENT_TRANSACTIONS, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_RECENT_TRANSACTIONS, {
     variables: { limit },
     fetchPolicy: 'cache-and-network',
   });
@@ -99,7 +123,7 @@ export function useRecentTransactions(limit = 5) {
 }
 
 export function useCategories() {
-  const { data, loading, error } = useQuery(GET_CATEGORIES, {
+  const { data, loading, error } = useQuery<any>(GET_CATEGORIES, {
     fetchPolicy: 'cache-first',
   });
 
@@ -112,7 +136,7 @@ export function useCategories() {
 
 export function useCreateTransaction() {
   const client = useApolloClient();
-  const [createTransactionMutation, { loading, error }] = useMutation(CREATE_TRANSACTION, {
+  const [createTransactionMutation, { loading, error }] = useMutation<any>(CREATE_TRANSACTION, {
     onCompleted: () => {
       // Refetch related queries
       client.refetchQueries({
@@ -133,7 +157,7 @@ export function useCreateTransaction() {
 
 export function useUpdateTransaction() {
   const client = useApolloClient();
-  const [updateTransactionMutation, { loading, error }] = useMutation(UPDATE_TRANSACTION, {
+  const [updateTransactionMutation, { loading, error }] = useMutation<any>(UPDATE_TRANSACTION, {
     onCompleted: () => {
       client.refetchQueries({
         include: ['GetTransactions', 'GetDashboardStats', 'GetAccounts', 'GetAnalytics'],
@@ -153,7 +177,7 @@ export function useUpdateTransaction() {
 
 export function useDeleteTransaction() {
   const client = useApolloClient();
-  const [deleteTransactionMutation, { loading, error }] = useMutation(DELETE_TRANSACTION, {
+  const [deleteTransactionMutation, { loading, error }] = useMutation<any>(DELETE_TRANSACTION, {
     onCompleted: () => {
       client.refetchQueries({
         include: ['GetTransactions', 'GetDashboardStats', 'GetAccounts', 'GetAnalytics'],

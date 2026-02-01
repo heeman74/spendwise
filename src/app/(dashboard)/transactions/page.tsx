@@ -1,18 +1,27 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import Card, { CardHeader, CardTitle } from '@/components/ui/Card';
+import { useState, useMemo, useCallback, useRef, useEffect, type SetStateAction } from 'react';
+import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import Spinner from '@/components/ui/Spinner';
 import TransactionList from '@/components/transactions/TransactionList';
 import TransactionFilters from '@/components/transactions/TransactionFilters';
 import Modal, { ModalFooter } from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
-import { mockTransactions, mockAccounts } from '@/data/mockData';
+import {
+  useTransactions,
+  useCreateTransaction,
+  useUpdateTransaction,
+  useDeleteTransaction,
+} from '@/hooks/useTransactions';
+import { useAccounts } from '@/hooks/useAccounts';
 import type { Transaction, TransactionFilters as FiltersType } from '@/types';
+import type { SortState } from '@/components/transactions/TransactionList';
 
 const categories = [
   { value: 'Food & Dining', label: 'Food & Dining' },
+  { value: 'Groceries', label: 'Groceries' },
   { value: 'Shopping', label: 'Shopping' },
   { value: 'Transportation', label: 'Transportation' },
   { value: 'Bills & Utilities', label: 'Bills & Utilities' },
@@ -43,49 +52,80 @@ const initialFilters: FiltersType = {
   maxAmount: null,
 };
 
+const PAGE_SIZE = 50;
+
+// Stable references — defined outside the component to prevent re-render loops
+const DEFAULT_PAGINATION = { page: 1, limit: PAGE_SIZE };
+
 export default function TransactionsPage() {
   const [filters, setFilters] = useState<FiltersType>(initialFilters);
+  const [sort, setSort] = useState<SortState>({ field: 'DATE', order: 'DESC' });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+
+  const { accounts } = useAccounts();
+
+  // Transform UI filters to API format
+  const apiFilters = useMemo(() => {
+    const f: Record<string, any> = {};
+    if (filters.search) f.search = filters.search;
+    if (filters.category) f.category = filters.category;
+    if (filters.type) f.type = filters.type;
+    if (filters.accountId) f.accountId = filters.accountId;
+    if (filters.startDate) f.startDate = filters.startDate.toISOString();
+    if (filters.endDate) f.endDate = filters.endDate.toISOString();
+    if (filters.minAmount !== null) f.minAmount = filters.minAmount;
+    if (filters.maxAmount !== null) f.maxAmount = filters.maxAmount;
+    return Object.keys(f).length > 0 ? f : undefined;
+  }, [filters]);
+
+  // Memoize sort to maintain stable reference for useQuery
+  const sortInput = useMemo(() => ({ field: sort.field, order: sort.order }), [sort.field, sort.order]);
+
+  const { transactions, pageInfo, loading, loadingMore, loadMore } = useTransactions(
+    apiFilters,
+    DEFAULT_PAGINATION,
+    sortInput,
+  );
+
+  const { createTransaction } = useCreateTransaction();
+  const { updateTransaction } = useUpdateTransaction();
+  const { deleteTransaction } = useDeleteTransaction();
+
+  // ── Infinite scroll via IntersectionObserver ──
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && pageInfo?.hasNextPage && !loading && !loadingMore) {
+          loadMore();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [pageInfo?.hasNextPage, loading, loadingMore, loadMore]);
+
   const [formData, setFormData] = useState({
     amount: '',
     type: 'EXPENSE',
     category: 'Food & Dining',
-    accountId: mockAccounts[0]?.id || '',
+    accountId: '',
     merchant: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
   });
 
-  const filteredTransactions = useMemo(() => {
-    return mockTransactions.filter((t) => {
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const matchesSearch =
-          t.merchant?.toLowerCase().includes(searchLower) ||
-          t.description?.toLowerCase().includes(searchLower) ||
-          t.category.toLowerCase().includes(searchLower);
-        if (!matchesSearch) return false;
-      }
-
-      if (filters.category && t.category !== filters.category) return false;
-      if (filters.type && t.type !== filters.type) return false;
-      if (filters.accountId && t.accountId !== filters.accountId) return false;
-
-      if (filters.startDate && new Date(t.date) < filters.startDate) return false;
-      if (filters.endDate && new Date(t.date) > filters.endDate) return false;
-
-      if (filters.minAmount !== null && t.amount < filters.minAmount) return false;
-      if (filters.maxAmount !== null && t.amount > filters.maxAmount) return false;
-
-      return true;
-    });
-  }, [filters]);
-
-  const accountOptions = mockAccounts.map((a) => ({
-    value: a.id,
-    label: a.name,
-  }));
+  const accountOptions = useMemo(
+    () => accounts.map((a: any) => ({ value: a.id, label: a.name })),
+    [accounts],
+  );
 
   const handleFiltersChange = (newFilters: Partial<FiltersType>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -109,23 +149,46 @@ export default function TransactionsPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     if (confirm('Are you sure you want to delete this transaction?')) {
-      console.log('Deleting transaction:', id);
-      // TODO: Implement delete
+      try {
+        await deleteTransaction(id);
+      } catch (err) {
+        console.error('Failed to delete transaction:', err);
+      }
     }
-  };
+  }, [deleteTransaction]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingTransaction) {
-      console.log('Updating transaction:', editingTransaction.id, formData);
-    } else {
-      console.log('Creating transaction:', formData);
+    try {
+      if (editingTransaction) {
+        await updateTransaction(editingTransaction.id, {
+          amount: parseFloat(formData.amount),
+          type: formData.type as any,
+          category: formData.category,
+          accountId: formData.accountId,
+          merchant: formData.merchant || undefined,
+          description: formData.description || undefined,
+          date: formData.date,
+        });
+      } else {
+        await createTransaction({
+          amount: parseFloat(formData.amount),
+          type: formData.type as any,
+          category: formData.category,
+          accountId: formData.accountId,
+          merchant: formData.merchant || undefined,
+          description: formData.description || undefined,
+          date: formData.date,
+        });
+      }
+      setIsModalOpen(false);
+      setEditingTransaction(null);
+      resetForm();
+    } catch (err) {
+      console.error('Failed to save transaction:', err);
     }
-    setIsModalOpen(false);
-    setEditingTransaction(null);
-    resetForm();
   };
 
   const resetForm = () => {
@@ -133,7 +196,7 @@ export default function TransactionsPage() {
       amount: '',
       type: 'EXPENSE',
       category: 'Food & Dining',
-      accountId: mockAccounts[0]?.id || '',
+      accountId: accounts[0]?.id || '',
       merchant: '',
       description: '',
       date: new Date().toISOString().split('T')[0],
@@ -142,7 +205,7 @@ export default function TransactionsPage() {
 
   const handleExport = () => {
     const headers = ['Date', 'Merchant', 'Category', 'Type', 'Amount', 'Description'];
-    const rows = filteredTransactions.map((t) => [
+    const rows = transactions.map((t: Transaction) => [
       new Date(t.date).toLocaleDateString(),
       t.merchant || '',
       t.category,
@@ -208,14 +271,27 @@ export default function TransactionsPage() {
       <Card padding="none">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Showing {filteredTransactions.length} transactions
+            {pageInfo
+              ? `Showing ${transactions.length} of ${pageInfo.totalCount} transactions`
+              : `Showing ${transactions.length} transactions`}
           </p>
         </div>
         <TransactionList
-          transactions={filteredTransactions}
+          transactions={transactions}
+          isLoading={loading}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          sort={sort}
+          onSort={setSort}
         />
+        {/* Infinite scroll sentinel */}
+        <div ref={sentinelRef} className="h-1" />
+        {loadingMore && (
+          <div className="flex items-center justify-center py-4 border-t border-gray-200 dark:border-gray-700">
+            <Spinner size="sm" />
+            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Loading more...</span>
+          </div>
+        )}
       </Card>
 
       {/* Add/Edit Modal */}

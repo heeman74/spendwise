@@ -9,6 +9,8 @@ export const TRANSACTION_FRAGMENT = gql`
     merchant
     description
     date
+    categoryConfidence
+    categorySource
     createdAt
     accountId
   }

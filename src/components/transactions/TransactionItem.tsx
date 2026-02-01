@@ -52,14 +52,28 @@ export default function TransactionItem({ transaction, onEdit, onDelete }: Trans
         </div>
       </TableCell>
       <TableCell>
-        <Badge
-          style={{
-            backgroundColor: `${getCategoryColor(transaction.category)}20`,
-            color: getCategoryColor(transaction.category),
-          }}
-        >
-          {transaction.category}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge
+            style={{
+              backgroundColor: `${getCategoryColor(transaction.category)}20`,
+              color: getCategoryColor(transaction.category),
+            }}
+          >
+            {transaction.category}
+          </Badge>
+          {transaction.categorySource === 'rule' && (
+            <span
+              className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"
+              title="Categorized by your saved merchant rule"
+            />
+          )}
+          {transaction.categorySource === 'ai' && (transaction.categoryConfidence ?? 100) < 70 && (
+            <span
+              className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"
+              title={`AI confidence: ${transaction.categoryConfidence}%`}
+            />
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <span className="text-sm text-gray-600 dark:text-gray-400">

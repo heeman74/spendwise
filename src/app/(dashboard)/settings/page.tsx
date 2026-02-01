@@ -2,16 +2,12 @@
 
 import { useState } from 'react';
 import { useTwoFactor, TwoFactorType } from '@/hooks/useTwoFactor';
-import { usePlaidItems, useUnlinkItem, useUpdateItemStatus } from '@/hooks/usePlaid';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import Spinner from '@/components/ui/Spinner';
 import Modal from '@/components/ui/Modal';
-import PlaidLinkButton from '@/components/plaid/PlaidLinkButton';
-import InstitutionCard from '@/components/plaid/InstitutionCard';
-import UnlinkConfirmationModal from '@/components/plaid/UnlinkConfirmationModal';
 
 export default function SettingsPage() {
   const {
@@ -39,13 +35,6 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
-
-  // Plaid institution management
-  const { plaidItems, loading: plaidLoading, refetch: refetchPlaidItems } = usePlaidItems();
-  const { unlinkItem, loading: unlinkingItem } = useUnlinkItem();
-  const { updateItemStatus } = useUpdateItemStatus();
-  const [unlinkTarget, setUnlinkTarget] = useState<any>(null);
-  const [reAuthItemId, setReAuthItemId] = useState<string | null>(null);
 
   const handleEnableStart = (method: TwoFactorType) => {
     setSelectedMethod(method);
@@ -155,33 +144,6 @@ export default function SettingsPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
-  // Plaid institution handlers
-  const handleReAuth = (itemId: string) => {
-    setReAuthItemId(itemId);
-  };
-
-  const handleReAuthSuccess = async () => {
-    setReAuthItemId(null);
-    setSuccess('Connection restored successfully');
-    await refetchPlaidItems();
-  };
-
-  const handleUnlink = (itemId: string) => {
-    const item = plaidItems.find((i: any) => i.id === itemId);
-    if (item) {
-      setUnlinkTarget(item);
-    }
-  };
-
-  const handleUnlinkConfirm = async (itemId: string, keepAsManual: boolean) => {
-    await unlinkItem(itemId, keepAsManual);
-    await refetchPlaidItems();
-  };
-
-  const handleUnlinkCancel = () => {
-    setUnlinkTarget(null);
   };
 
   if (loading) {
@@ -580,80 +542,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </Modal>
-
-      {/* Connected Institutions Section */}
-      <Card>
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Connected Institutions
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Manage your connected bank accounts and financial institutions
-              </p>
-            </div>
-            <PlaidLinkButton mode="create" onSuccess={refetchPlaidItems}>
-              Connect Bank
-            </PlaidLinkButton>
-          </div>
-
-          {plaidLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Spinner size="lg" />
-            </div>
-          ) : plaidItems.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              </div>
-              <p className="text-gray-600 mb-4">No institutions connected yet</p>
-              <p className="text-sm text-gray-500 mb-6">
-                Connect your first bank to start syncing accounts and transactions automatically.
-              </p>
-              <PlaidLinkButton mode="create" onSuccess={refetchPlaidItems}>
-                Connect Your First Bank
-              </PlaidLinkButton>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {plaidItems.map((item: any) => (
-                <InstitutionCard
-                  key={item.id}
-                  plaidItem={item}
-                  onReAuth={handleReAuth}
-                  onUnlink={handleUnlink}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </Card>
-
-      {/* Re-auth PlaidLinkButton (hidden, auto-opens) */}
-      {reAuthItemId && (
-        <div className="hidden">
-          <PlaidLinkButton
-            mode="update"
-            itemId={reAuthItemId}
-            onSuccess={handleReAuthSuccess}
-            onExit={() => setReAuthItemId(null)}
-          />
-        </div>
-      )}
-
-      {/* Unlink Confirmation Modal */}
-      {unlinkTarget && (
-        <UnlinkConfirmationModal
-          institutionName={unlinkTarget.institutionName}
-          accountCount={unlinkTarget.accounts.length}
-          itemId={unlinkTarget.id}
-          onConfirm={handleUnlinkConfirm}
-          onCancel={handleUnlinkCancel}
-        />
-      )}
     </div>
   );
 }

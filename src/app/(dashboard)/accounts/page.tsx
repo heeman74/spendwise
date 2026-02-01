@@ -1,62 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import BalanceSummary from '@/components/accounts/BalanceSummary';
 import AccountTypeGroup from '@/components/accounts/AccountTypeGroup';
-import PlaidLinkButton from '@/components/plaid/PlaidLinkButton';
-import LinkSuccessModal from '@/components/plaid/LinkSuccessModal';
 import { useAccounts } from '@/hooks/useAccounts';
-import { usePlaidItems } from '@/hooks/usePlaid';
 import type { AccountType } from '@/types';
 
 export default function AccountsPage() {
   const { accounts, loading: accountsLoading } = useAccounts();
-  const { plaidItems, loading: plaidLoading } = usePlaidItems();
-  const [showLinkSuccess, setShowLinkSuccess] = useState(false);
-  const [linkResult, setLinkResult] = useState<any>(null);
-  const [triggerPlaidLink, setTriggerPlaidLink] = useState(0);
-
-  const isLoading = accountsLoading || plaidLoading;
-
-  // Handler for PlaidLinkButton success
-  const handlePlaidSuccess = (result: any) => {
-    setLinkResult(result);
-    setShowLinkSuccess(true);
-  };
-
-  // Handler for connecting another account from success modal
-  const handleConnectAnother = () => {
-    setShowLinkSuccess(false);
-    setLinkResult(null);
-    // Trigger PlaidLinkButton to open again (will be handled externally if needed)
-    setTriggerPlaidLink((prev) => prev + 1);
-  };
-
-  // Handler for done from success modal
-  const handleDone = () => {
-    setShowLinkSuccess(false);
-    setLinkResult(null);
-  };
-
-  // Handler for re-authentication
-  const handleReAuth = (itemId: string) => {
-    console.log('Re-authenticate item:', itemId);
-    // TODO: Implement re-auth flow with PlaidLinkButton in update mode
-  };
-
-  // If showing success modal, render it
-  if (showLinkSuccess && linkResult) {
-    return (
-      <LinkSuccessModal
-        institutionName={linkResult.plaidItem?.institutionName || 'Bank'}
-        accounts={linkResult.plaidItem?.accounts || []}
-        onDone={handleDone}
-        onConnectAnother={handleConnectAnother}
-      />
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -65,18 +18,20 @@ export default function AccountsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Accounts</h1>
           <p className="text-gray-500 dark:text-gray-400">
-            Manage your connected financial accounts
+            Manage your financial accounts
           </p>
         </div>
-        <PlaidLinkButton mode="create" onSuccess={handlePlaidSuccess}>
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Connect Bank
-        </PlaidLinkButton>
+        <Link href="/import">
+          <Button>
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            Upload Statement
+          </Button>
+        </Link>
       </div>
 
-      {isLoading ? (
+      {accountsLoading ? (
         <div className="flex items-center justify-center py-12">
           <Spinner size="lg" />
         </div>
@@ -89,13 +44,20 @@ export default function AccountsPage() {
             </svg>
           </div>
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No accounts connected
+            No accounts yet
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
-            Connect your bank accounts to get started with SpendWise. Track balances, transactions, and get personalized financial insights.
+            Upload a bank or credit card statement to get started with SpendWise. Track balances, transactions, and get personalized financial insights.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <PlaidLinkButton mode="create" onSuccess={handlePlaidSuccess} />
+            <Link href="/import">
+              <Button>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Upload Statement
+              </Button>
+            </Link>
           </div>
         </div>
       ) : (
@@ -108,33 +70,21 @@ export default function AccountsPage() {
             <AccountTypeGroup
               type="CHECKING"
               accounts={accounts.filter((a: any) => a.type === 'CHECKING')}
-              plaidItems={plaidItems}
-              onConnectBank={handlePlaidSuccess}
-              onReAuth={handleReAuth}
             />
 
             <AccountTypeGroup
               type="SAVINGS"
               accounts={accounts.filter((a: any) => a.type === 'SAVINGS')}
-              plaidItems={plaidItems}
-              onConnectBank={handlePlaidSuccess}
-              onReAuth={handleReAuth}
             />
 
             <AccountTypeGroup
               type="CREDIT"
               accounts={accounts.filter((a: any) => a.type === 'CREDIT')}
-              plaidItems={plaidItems}
-              onConnectBank={handlePlaidSuccess}
-              onReAuth={handleReAuth}
             />
 
             <AccountTypeGroup
               type="INVESTMENT"
               accounts={accounts.filter((a: any) => a.type === 'INVESTMENT')}
-              plaidItems={plaidItems}
-              onConnectBank={handlePlaidSuccess}
-              onReAuth={handleReAuth}
             />
           </div>
         </>

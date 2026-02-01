@@ -5,11 +5,46 @@ import TransactionItem from './TransactionItem';
 import Spinner from '../ui/Spinner';
 import type { Transaction } from '@/types';
 
+type SortField = 'DATE' | 'AMOUNT' | 'CATEGORY';
+type SortOrder = 'ASC' | 'DESC';
+
+export interface SortState {
+  field: SortField;
+  order: SortOrder;
+}
+
 interface TransactionListProps {
   transactions: Transaction[];
   isLoading?: boolean;
   onEdit?: (transaction: Transaction) => void;
   onDelete?: (id: string) => void;
+  sort?: SortState;
+  onSort?: (sort: SortState) => void;
+}
+
+function SortIcon({ field, sort }: { field: SortField; sort?: SortState }) {
+  const isActive = sort?.field === field;
+  const isAsc = isActive && sort?.order === 'ASC';
+  const isDesc = isActive && sort?.order === 'DESC';
+
+  return (
+    <span className="inline-flex flex-col ml-1 -space-y-1">
+      <svg
+        className={`w-3 h-3 ${isAsc ? 'text-primary-600 dark:text-primary-400' : 'text-gray-300 dark:text-gray-600'}`}
+        viewBox="0 0 10 6"
+        fill="currentColor"
+      >
+        <path d="M5 0L10 6H0z" />
+      </svg>
+      <svg
+        className={`w-3 h-3 ${isDesc ? 'text-primary-600 dark:text-primary-400' : 'text-gray-300 dark:text-gray-600'}`}
+        viewBox="0 0 10 6"
+        fill="currentColor"
+      >
+        <path d="M5 6L0 0h10z" />
+      </svg>
+    </span>
+  );
 }
 
 export default function TransactionList({
@@ -17,6 +52,8 @@ export default function TransactionList({
   isLoading = false,
   onEdit,
   onDelete,
+  sort,
+  onSort,
 }: TransactionListProps) {
   if (isLoading) {
     return (
@@ -50,15 +87,54 @@ export default function TransactionList({
     );
   }
 
+  const handleSort = (field: SortField) => {
+    if (!onSort) return;
+    if (sort?.field === field) {
+      // Toggle direction
+      onSort({ field, order: sort.order === 'DESC' ? 'ASC' : 'DESC' });
+    } else {
+      // New field defaults to DESC (newest/highest first)
+      onSort({ field, order: 'DESC' });
+    }
+  };
+
+  const sortableClass = onSort
+    ? 'cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 transition-colors'
+    : '';
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Date</TableHead>
+          <TableHead
+            className={sortableClass}
+            onClick={() => handleSort('DATE')}
+          >
+            <span className="inline-flex items-center">
+              Date
+              {onSort && <SortIcon field="DATE" sort={sort} />}
+            </span>
+          </TableHead>
           <TableHead>Description</TableHead>
-          <TableHead>Category</TableHead>
+          <TableHead
+            className={sortableClass}
+            onClick={() => handleSort('CATEGORY')}
+          >
+            <span className="inline-flex items-center">
+              Category
+              {onSort && <SortIcon field="CATEGORY" sort={sort} />}
+            </span>
+          </TableHead>
           <TableHead>Account</TableHead>
-          <TableHead className="text-right">Amount</TableHead>
+          <TableHead
+            className={`text-right ${sortableClass}`}
+            onClick={() => handleSort('AMOUNT')}
+          >
+            <span className="inline-flex items-center justify-end w-full">
+              Amount
+              {onSort && <SortIcon field="AMOUNT" sort={sort} />}
+            </span>
+          </TableHead>
           <TableHead className="w-[100px]">Actions</TableHead>
         </TableRow>
       </TableHeader>

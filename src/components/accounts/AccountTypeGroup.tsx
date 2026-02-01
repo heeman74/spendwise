@@ -1,27 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import AccountCard from './AccountCard';
-import PlaidLinkButton from '@/components/plaid/PlaidLinkButton';
+import Button from '@/components/ui/Button';
 import type { Account, AccountType } from '@/types';
-
-interface PlaidItem {
-  id: string;
-  status: 'active' | 'error' | 'pending_disconnect';
-  institutionName: string;
-  accounts: Array<{
-    id: string;
-    name: string;
-    mask?: string;
-    isLinked: boolean;
-  }>;
-}
 
 interface AccountTypeGroupProps {
   type: AccountType;
   accounts: Account[];
-  plaidItems: PlaidItem[];
-  onConnectBank?: (result?: any) => void;
-  onReAuth?: (itemId: string) => void;
 }
 
 const typeLabels: Record<AccountType, string> = {
@@ -34,26 +20,8 @@ const typeLabels: Record<AccountType, string> = {
 export default function AccountTypeGroup({
   type,
   accounts,
-  plaidItems,
-  onConnectBank,
-  onReAuth,
 }: AccountTypeGroupProps) {
   const typeLabel = typeLabels[type];
-
-  // Helper function to find connection status for an account
-  const getConnectionStatus = (accountId: string) => {
-    for (const item of plaidItems) {
-      const linkedAccount = item.accounts.find((a) => a.id === accountId);
-      if (linkedAccount && linkedAccount.isLinked) {
-        return {
-          status: item.status,
-          itemId: item.id,
-          mask: linkedAccount.mask,
-        };
-      }
-    }
-    return null;
-  };
 
   return (
     <div>
@@ -72,32 +40,25 @@ export default function AccountTypeGroup({
             No {typeLabel.toLowerCase()} accounts
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            Connect a bank account to get started
+            Upload a statement to add an account
           </p>
-          {onConnectBank && (
-            <PlaidLinkButton mode="create" onSuccess={onConnectBank}>
-              Connect Bank
-            </PlaidLinkButton>
-          )}
+          <Link href="/import">
+            <Button variant="outline" size="sm">
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Upload Statement
+            </Button>
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {accounts.map((account) => {
-            const connectionInfo = getConnectionStatus(account.id);
-            return (
-              <AccountCard
-                key={account.id}
-                account={account}
-                connectionStatus={connectionInfo?.status}
-                mask={connectionInfo?.mask}
-                onReAuthClick={
-                  connectionInfo?.status === 'error' && onReAuth
-                    ? () => onReAuth(connectionInfo.itemId)
-                    : undefined
-                }
-              />
-            );
-          })}
+          {accounts.map((account) => (
+            <AccountCard
+              key={account.id}
+              account={account}
+            />
+          ))}
         </div>
       )}
     </div>

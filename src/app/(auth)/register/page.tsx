@@ -29,7 +29,9 @@ export default function RegisterPage() {
     confirmPassword: '',
   });
 
-  const [registerMutation, { loading: registering }] = useMutation(REGISTER);
+  const [registerMutation, { loading: registering }] = useMutation<{
+    register: { token: string; requiresSetup: boolean } | null;
+  }>(REGISTER);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

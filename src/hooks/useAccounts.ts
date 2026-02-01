@@ -24,7 +24,7 @@ export interface UpdateAccountInput {
 }
 
 export function useAccounts() {
-  const { data, loading, error, refetch } = useQuery(GET_ACCOUNTS, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_ACCOUNTS, {
     fetchPolicy: 'cache-and-network',
   });
 
@@ -37,7 +37,7 @@ export function useAccounts() {
 }
 
 export function useAccount(id: string) {
-  const { data, loading, error, refetch } = useQuery(GET_ACCOUNT, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_ACCOUNT, {
     variables: { id },
     skip: !id,
     fetchPolicy: 'cache-and-network',
@@ -52,7 +52,7 @@ export function useAccount(id: string) {
 }
 
 export function useTotalBalance() {
-  const { data, loading, error, refetch } = useQuery(GET_TOTAL_BALANCE, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_TOTAL_BALANCE, {
     fetchPolicy: 'cache-and-network',
   });
 
@@ -66,7 +66,7 @@ export function useTotalBalance() {
 
 export function useCreateAccount() {
   const client = useApolloClient();
-  const [createAccountMutation, { loading, error }] = useMutation(CREATE_ACCOUNT, {
+  const [createAccountMutation, { loading, error }] = useMutation<any>(CREATE_ACCOUNT, {
     onCompleted: () => {
       client.refetchQueries({
         include: ['GetAccounts', 'GetDashboardStats', 'GetTotalBalance'],
@@ -86,7 +86,7 @@ export function useCreateAccount() {
 
 export function useUpdateAccount() {
   const client = useApolloClient();
-  const [updateAccountMutation, { loading, error }] = useMutation(UPDATE_ACCOUNT, {
+  const [updateAccountMutation, { loading, error }] = useMutation<any>(UPDATE_ACCOUNT, {
     onCompleted: () => {
       client.refetchQueries({
         include: ['GetAccounts', 'GetDashboardStats', 'GetTotalBalance'],
@@ -106,7 +106,7 @@ export function useUpdateAccount() {
 
 export function useDeleteAccount() {
   const client = useApolloClient();
-  const [deleteAccountMutation, { loading, error }] = useMutation(DELETE_ACCOUNT, {
+  const [deleteAccountMutation, { loading, error }] = useMutation<any>(DELETE_ACCOUNT, {
     onCompleted: () => {
       client.refetchQueries({
         include: ['GetAccounts', 'GetDashboardStats', 'GetTotalBalance'],

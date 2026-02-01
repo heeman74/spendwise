@@ -29,6 +29,8 @@ model User {
   twoFactorLogs         TwoFactorLog[]
   plaidItems            PlaidItem[]
   recurringTransactions RecurringTransaction[]
+  statementImports      StatementImport[]
+  merchantRules         MerchantRule[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 }
@@ -49,10 +51,11 @@ model Account {
   isLinked       Boolean             @default(false) // Manual vs Plaid-linked
   mask           String? // Last 4 digits
   officialName   String? // Institution's official account name
-  transactions   Transaction[]
-  holdings       InvestmentHolding[]
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  transactions     Transaction[]
+  holdings         InvestmentHolding[]
+  statementImports StatementImport[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   @@index([userId])
   @@index([plaidAccountId])
@@ -75,6 +78,9 @@ model Transaction {
   pending                 Boolean         @default(false) // Pending vs posted
   personalFinanceCategory String? // Enhanced categorization from Plaid
   paymentChannel          String? // online, in store, other
+  importId                String? // Links to StatementImport
+  categoryConfidence      Int?    // 0-100 confidence from AI
+  categorySource          String? // "ai", "rule", "keyword", "manual", "cache"
   createdAt               DateTime        @default(now())
 
   @@index([userId])
@@ -82,6 +88,7 @@ model Transaction {
   @@index([date])
   @@index([category])
   @@index([plaidTransactionId])
+  @@index([importId])
 }
 
 model SavingsGoal {
@@ -243,4 +250,59 @@ enum TwoFactorEvent {
   SETUP_COMPLETED
   DISABLED
   BACKUP_CODE_USED
+}
+
+model StatementImport {
+  id                   String          @id @default(cuid())
+  userId               String
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName             String
+  fileFormat           StatementFormat
+  fileSize             Int
+  status               ImportStatus    @default(PENDING)
+  accountId            String?
+  account              Account?        @relation(fields: [accountId], references: [id])
+  detectedInstitution  String?
+  detectedAccountType  AccountType?
+  detectedAccountName  String?
+  detectedAccountMask  String?
+  transactionsFound    Int             @default(0)
+  transactionsImported Int             @default(0)
+  duplicatesSkipped    Int             @default(0)
+  errorMessage         String?
+  createdAt            DateTime        @default(now())
+  completedAt          DateTime?
+
+  @@index([userId])
+}
+
+model MerchantRule {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchantPattern String   // Normalized merchant key (lowercase, stripped)
+  merchantDisplay String   // Clean display name ("Amazon")
+  category        String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, merchantPattern])
+  @@index([userId])
+  @@index([merchantPattern])
+}
+
+enum StatementFormat {
+  CSV
+  OFX
+  QFX
+  PDF
+}
+
+enum ImportStatus {
+  PENDING
+  PARSING
+  PREVIEW
+  IMPORTING
+  COMPLETED
+  ERROR
 }

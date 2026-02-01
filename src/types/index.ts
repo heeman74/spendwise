@@ -34,6 +34,8 @@ export interface Transaction {
   merchant: string | null;
   description: string | null;
   date: Date;
+  categoryConfidence?: number | null;
+  categorySource?: string | null;
   createdAt: Date;
   account?: Account;
 }

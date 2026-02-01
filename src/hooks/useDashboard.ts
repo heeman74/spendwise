@@ -6,7 +6,7 @@ import { GET_DASHBOARD_STATS, GET_ANALYTICS, GET_SPENDING_BY_CATEGORY } from '@/
 export type Period = 'WEEK' | 'MONTH' | 'YEAR';
 
 export function useDashboardStats(options?: { skip?: boolean }) {
-  const { data, loading, error, refetch } = useQuery(GET_DASHBOARD_STATS, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_DASHBOARD_STATS, {
     fetchPolicy: 'cache-and-network',
     skip: options?.skip,
   });
@@ -20,7 +20,7 @@ export function useDashboardStats(options?: { skip?: boolean }) {
 }
 
 export function useAnalytics(period: Period = 'MONTH') {
-  const { data, loading, error, refetch } = useQuery(GET_ANALYTICS, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_ANALYTICS, {
     variables: { period },
     fetchPolicy: 'cache-and-network',
   });
@@ -34,7 +34,7 @@ export function useAnalytics(period: Period = 'MONTH') {
 }
 
 export function useSpendingByCategory(period: Period = 'MONTH') {
-  const { data, loading, error, refetch } = useQuery(GET_SPENDING_BY_CATEGORY, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_SPENDING_BY_CATEGORY, {
     variables: { period },
     fetchPolicy: 'cache-and-network',
   });

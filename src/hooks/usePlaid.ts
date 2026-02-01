@@ -16,7 +16,7 @@ export interface ExchangePublicTokenInput {
 }
 
 export function usePlaidItems() {
-  const { data, loading, error, refetch } = useQuery(GET_PLAID_ITEMS, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_PLAID_ITEMS, {
     fetchPolicy: 'cache-and-network',
   });
 
@@ -29,7 +29,9 @@ export function usePlaidItems() {
 }
 
 export function useCreateLinkToken() {
-  const [createLinkTokenMutation, { data, loading, error }] = useMutation(CREATE_LINK_TOKEN);
+  const [createLinkTokenMutation, { data, loading, error }] = useMutation<{
+    createLinkToken: { linkToken: string } | null;
+  }>(CREATE_LINK_TOKEN);
 
   const createLinkToken = (itemId?: string) =>
     createLinkTokenMutation({ variables: itemId ? { itemId } : {} });
@@ -44,7 +46,9 @@ export function useCreateLinkToken() {
 
 export function useExchangePublicToken() {
   const client = useApolloClient();
-  const [exchangePublicTokenMutation, { data, loading, error }] = useMutation(
+  const [exchangePublicTokenMutation, { data, loading, error }] = useMutation<{
+    exchangePublicToken: { plaidItem: { institutionName: string; accounts: any[] } } | null;
+  }>(
     EXCHANGE_PUBLIC_TOKEN,
     {
       onCompleted: () => {
@@ -68,7 +72,7 @@ export function useExchangePublicToken() {
 
 export function useUnlinkItem() {
   const client = useApolloClient();
-  const [unlinkItemMutation, { loading, error }] = useMutation(UNLINK_ITEM, {
+  const [unlinkItemMutation, { loading, error }] = useMutation<{ unlinkItem: boolean }>(UNLINK_ITEM, {
     onCompleted: () => {
       client.refetchQueries({
         include: ['GetPlaidItems', 'GetAccounts'],
@@ -88,7 +92,7 @@ export function useUnlinkItem() {
 
 export function useUpdateItemStatus() {
   const client = useApolloClient();
-  const [updateItemStatusMutation, { loading, error }] = useMutation(UPDATE_ITEM_STATUS, {
+  const [updateItemStatusMutation, { loading, error }] = useMutation<{ updateItemStatus: boolean }>(UPDATE_ITEM_STATUS, {
     onCompleted: () => {
       client.refetchQueries({
         include: ['GetPlaidItems'],

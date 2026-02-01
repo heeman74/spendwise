@@ -33,7 +33,7 @@ const typeIcons: Record<Advice['type'], React.ReactNode> = {
   ),
 };
 
-const priorityColors: Record<Advice['priority'], string> = {
+const priorityColors: Record<Advice['priority'], 'danger' | 'warning' | 'info'> = {
   high: 'danger',
   medium: 'warning',
   low: 'info',

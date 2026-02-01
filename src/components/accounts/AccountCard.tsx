@@ -8,12 +8,9 @@ import type { Account, AccountType } from '@/types';
 
 interface AccountCardProps {
   account: Account;
-  connectionStatus?: 'active' | 'error' | 'pending_disconnect';
-  mask?: string;
   onEdit?: (account: Account) => void;
   onDelete?: (id: string) => void;
   onSync?: (id: string) => void;
-  onReAuthClick?: () => void;
 }
 
 const accountTypeColors: Record<AccountType, string> = {
@@ -48,15 +45,11 @@ const accountTypeIcons: Record<AccountType, React.ReactNode> = {
 
 export default function AccountCard({
   account,
-  connectionStatus,
-  mask,
   onEdit,
   onDelete,
   onSync,
-  onReAuthClick,
 }: AccountCardProps) {
   const isNegativeBalance = account.balance < 0;
-  const isLinked = connectionStatus !== undefined;
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -69,43 +62,13 @@ export default function AccountCard({
             <h3 className="font-semibold text-gray-900 dark:text-white">{account.name}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {account.institution}
-              {mask && <span className="ml-2">****{mask}</span>}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Connection status indicator */}
-          {isLinked && connectionStatus === 'active' && (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-              <div className="w-2 h-2 rounded-full bg-green-500"></div>
-              <span className="text-xs text-green-700 dark:text-green-400">Connected</span>
-            </div>
-          )}
-          {isLinked && connectionStatus === 'error' && (
-            <button
-              onClick={onReAuthClick}
-              className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors cursor-pointer"
-              title="Re-authenticate to restore connection"
-            >
-              <svg className="w-3 h-3 text-amber-600 dark:text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <span className="text-xs text-amber-700 dark:text-amber-400">Reconnect</span>
-            </button>
-          )}
-          {isLinked && connectionStatus === 'pending_disconnect' && (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
-              <svg className="w-3 h-3 text-yellow-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <span className="text-xs text-yellow-700 dark:text-yellow-400">Pending</span>
-            </div>
-          )}
-          {!isLinked && (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">
-              <span className="text-xs text-gray-600 dark:text-gray-400">Manual</span>
-            </div>
-          )}
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">
+            <span className="text-xs text-gray-600 dark:text-gray-400">Manual</span>
+          </div>
           <Badge className={accountTypeColors[account.type]}>{account.type}</Badge>
         </div>
       </div>

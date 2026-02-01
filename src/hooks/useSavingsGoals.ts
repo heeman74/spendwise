@@ -26,7 +26,7 @@ export interface UpdateSavingsGoalInput {
 }
 
 export function useSavingsGoals() {
-  const { data, loading, error, refetch } = useQuery(GET_SAVINGS_GOALS, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_SAVINGS_GOALS, {
     fetchPolicy: 'cache-and-network',
   });
 
@@ -39,7 +39,7 @@ export function useSavingsGoals() {
 }
 
 export function useSavingsGoal(id: string) {
-  const { data, loading, error, refetch } = useQuery(GET_SAVINGS_GOAL, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_SAVINGS_GOAL, {
     variables: { id },
     skip: !id,
     fetchPolicy: 'cache-and-network',
@@ -54,7 +54,7 @@ export function useSavingsGoal(id: string) {
 }
 
 export function useTotalSavingsProgress() {
-  const { data, loading, error, refetch } = useQuery(GET_TOTAL_SAVINGS_PROGRESS, {
+  const { data, loading, error, refetch } = useQuery<any>(GET_TOTAL_SAVINGS_PROGRESS, {
     fetchPolicy: 'cache-and-network',
   });
 
@@ -68,7 +68,7 @@ export function useTotalSavingsProgress() {
 
 export function useCreateSavingsGoal() {
   const client = useApolloClient();
-  const [createSavingsGoalMutation, { loading, error }] = useMutation(CREATE_SAVINGS_GOAL, {
+  const [createSavingsGoalMutation, { loading, error }] = useMutation<any>(CREATE_SAVINGS_GOAL, {
     onCompleted: () => {
       client.refetchQueries({
         include: ['GetSavingsGoals', 'GetDashboardStats', 'GetTotalSavingsProgress'],
@@ -88,7 +88,7 @@ export function useCreateSavingsGoal() {
 
 export function useUpdateSavingsGoal() {
   const client = useApolloClient();
-  const [updateSavingsGoalMutation, { loading, error }] = useMutation(UPDATE_SAVINGS_GOAL, {
+  const [updateSavingsGoalMutation, { loading, error }] = useMutation<any>(UPDATE_SAVINGS_GOAL, {
     onCompleted: () => {
       client.refetchQueries({
         include: ['GetSavingsGoals', 'GetDashboardStats', 'GetTotalSavingsProgress'],
@@ -108,7 +108,7 @@ export function useUpdateSavingsGoal() {
 
 export function useDeleteSavingsGoal() {
   const client = useApolloClient();
-  const [deleteSavingsGoalMutation, { loading, error }] = useMutation(DELETE_SAVINGS_GOAL, {
+  const [deleteSavingsGoalMutation, { loading, error }] = useMutation<any>(DELETE_SAVINGS_GOAL, {
     onCompleted: () => {
       client.refetchQueries({
         include: ['GetSavingsGoals', 'GetDashboardStats', 'GetTotalSavingsProgress'],
@@ -128,7 +128,7 @@ export function useDeleteSavingsGoal() {
 
 export function useContributeSavings() {
   const client = useApolloClient();
-  const [contributeSavingsMutation, { loading, error }] = useMutation(CONTRIBUTE_SAVINGS, {
+  const [contributeSavingsMutation, { loading, error }] = useMutation<any>(CONTRIBUTE_SAVINGS, {
     onCompleted: () => {
       client.refetchQueries({
         include: ['GetSavingsGoals', 'GetDashboardStats', 'GetTotalSavingsProgress'],
